@@ -1,0 +1,73 @@
+version: "3.7"
+
+services:
+    app:
+        container_name: app-tdd
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                - user=${APP_USER}
+                - uid=${APP_UID}
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - ./:/var/www
+            - ./docker/php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+        depends_on:
+            - redis
+        networks:
+            - network-laravel
+
+    nginx:
+        container_name: nginx-tdd
+        image: nginx:alpine
+        restart: unless-stopped
+        ports:
+            - "8989:80"
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx/:/etc/nginx/conf.d/
+        networks:
+            - network-laravel
+
+    mysql:
+        container_name: mysql-tdd
+        image: mysql:5.7.22
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_USER: ${DB_USERNAME}
+        volumes:
+            - ./docker/mysql/dbdata:/var/lib/mysql
+        ports:
+            - "3388:3306"
+        networks:
+            - network-laravel
+
+    # queue
+    #    queue:
+    #        container_name: queue
+    #        image: laravel9-app
+    #        restart: unless-stopped
+    #        command: "php artisan queue:work"
+    #        volumes:
+    #            - ./:/var/www
+    #        depends_on:
+    #            - redis
+    #            - app
+    #        networks:
+    #            - network-laravel
+
+    # redis
+    redis:
+        container_name: redis-tdd
+        image: redis:latest
+        networks:
+            - network-laravel
+
+networks:
+    network-laravel:
+        driver: bridge
